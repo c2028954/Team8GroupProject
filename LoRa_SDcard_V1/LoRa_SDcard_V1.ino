@@ -7,6 +7,7 @@ const int csPin = 4;     // LoRa radio chip select
 const int resetPin = 2;  // LoRa radio reset
 const int irqPin = 3;   // hardware interrupt
 const int chipSelect = 10;
+float x, y, z;
 int mysensvals[4] = {,,,};
 byte msgCount = 0;     // Message counter
 void setup() {
@@ -37,13 +38,34 @@ Serial.print("Initializing SD card...");
   }
 
   Serial.println("initialization done.");
+
+  //initialise sensors
+  
+//accelerometer setup
+  if (!IMU.begin()) {
+    Serial.println("Failed to initialize IMU!");
+
+    while (1);
+  }
+
+  Serial.print("Accelerometer sample rate = ");
+  Serial.print(IMU.accelerationSampleRate());
+  Serial.println(" Hz");
 }
 
 
 void loop() {
 
   //individual sensor codes go here
-    
+    if (IMU.accelerationAvailable()) {
+    IMU.readAcceleration(x, y, z);
+
+    Serial.print(x);
+    Serial.print('\t');
+    Serial.print(y);
+    Serial.print('\t');
+    Serial.println(z);
+  }
 //sending packet data via LoRa
   Serial.print("Sending packet: ");
   Serial.println(msgCount);
