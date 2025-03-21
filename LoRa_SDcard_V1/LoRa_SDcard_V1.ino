@@ -6,6 +6,7 @@ const int csPin = 4;     // LoRa radio chip select
 const int resetPin = 2;  // LoRa radio reset
 const int irqPin = 3;   // hardware interrupt
 const int chipSelect = 10;
+int mysensvals[4] = {,,,};
 byte msgCount = 0;     // Message counter
 void setup() {
   Serial.begin(9600);
@@ -39,6 +40,10 @@ Serial.print("Initializing SD card...");
 
 
 void loop() {
+
+  //individual sensor codes go here
+
+
   // put your main code here, to run repeatedly:
 Serial.print("Sending packet: ");
   Serial.println(msgCount);
