@@ -1,6 +1,7 @@
 #include <SPI.h>
 #include <SD.h>
 #include <LoRa.h>
+#include <Arduino_LSM6DS3.h>
 
 const int csPin = 4;     // LoRa radio chip select
 const int resetPin = 2;  // LoRa radio reset
