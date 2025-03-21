@@ -43,69 +43,9 @@ Serial.print("Initializing SD card...");
 void loop() {
 
   //individual sensor codes go here
-
-
-  // put your main code here, to run repeatedly:
-    if (!IMU.begin()) { 
-
-    Serial.println("Failed to initialize IMU!"); 
-
-  
-
-    while (1); 
-
-  } 
-
-  
-
-  Serial.print("Accelerometer sample rate = "); 
-
-  Serial.print(IMU.accelerationSampleRate()); 
-
-  Serial.println(" Hz"); 
-
-  Serial.println(); 
-
-  Serial.println("Acceleration in g's"); 
-
-  Serial.println("X\tY\tZ"); 
-
-} 
-
-  
-
-void loop() { 
-
-  float x, y, z; 
-
-delay(250); 
-
-  if (IMU.accelerationAvailable()) { 
-
-    IMU.readAcceleration(x, y, z); 
-
-  
-
-    Serial.print(x); 
-
-    Serial.print('\t'); 
-
-    Serial.print(y); 
-
-    Serial.print('\t'); 
-
-    Serial.println(z); 
-
-    if (abs(x)>1.2 || abs(y)>1.2 || abs(z)>1.2){ 
-
-      Serial.println("unusual vibrations detected"); 
-
-    } 
-
-  } 
-
-} 
-Serial.print("Sending packet: ");
+    
+//sending packet data via LoRa
+  Serial.print("Sending packet: ");
   Serial.println(msgCount);
 
   // Send packet
@@ -117,7 +57,7 @@ Serial.print("Sending packet: ");
   // Increment packet counter
   msgCount++;
 
-  // 5-second delay
+  //Storing data in SD card
   File dataFile = SD.open("datalog.txt", FILE_WRITE);
 
   // if the file is available, write to it:
