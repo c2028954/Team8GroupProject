@@ -8,7 +8,7 @@ const int resetPin = 2;  // LoRa radio reset
 const int irqPin = 3;   // hardware interrupt
 const int chipSelect = 10;
 float x, y, z;
-int mysensvals[4] = {,,,};
+int mysensvals[4] = {,,,}; // array to display data of sensors
 byte msgCount = 0;     // Message counter
 void setup() {
   Serial.begin(9600);
