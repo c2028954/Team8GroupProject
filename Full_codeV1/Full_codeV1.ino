@@ -11,7 +11,7 @@ const int irqPin = 3;   // hardware interrupt
 const int chipSelect = 10; // SD chip select pin
 unsigned status;
 float x, y, z;
-int Ppin = A3;
+int Ppin = A1;
 float Pvalue;
 int mysense[8]; // array to display data of sensors
 byte msgCount = 0;     // Message counter
@@ -32,7 +32,7 @@ void setup() {
     while (1)
       ;
   }
-Serial.print("Initializing SD card...");
+Serial.println("Initializing SD card...");
 
   if (!SD.begin(chipSelect)) {
     Serial.println("initialization failed. Things to check:");
@@ -48,7 +48,9 @@ Serial.print("Initializing SD card...");
   //initialise sensors
 
   //BME280 temp sense set up
+  Serial.println("point 1 reached");
   status = bme.begin(0x76);
+  Serial.println("point 2 reached");
   if (!status) {
         Serial.println("Could not find a valid BME280 sensor, check wiring, address, sensor ID!");
         Serial.print("SensorID was: 0x"); Serial.println(bme.sensorID(),16);
@@ -56,7 +58,7 @@ Serial.print("Initializing SD card...");
         Serial.print("   ID of 0x56-0x58 represents a BMP 280,\n");
         Serial.print("        ID of 0x60 represents a BME 280.\n");
         Serial.print("        ID of 0x61 represents a BME 680.\n");
-        while (1) delay(10);
+        //while (1) delay(10);
     }
 //accelerometer setup
   /*if (!IMU.begin()) {
@@ -112,8 +114,8 @@ void loop() {
   // if the file is available, write to it:
   if (dataFile) {
     for (int i = 0; i < 8; i++) {
-        dataFile.print(sensorData[i]); // Convert float to string and send
-        if (i < 7) LoRa.print(","); // Separate values with commas
+        dataFile.print(mysense[i]); // Convert float to string and send
+        if (i < 7) dataFile.print(","); // Separate values with commas
     }
     dataFile.println();
     dataFile.close();
@@ -124,5 +126,6 @@ void loop() {
   else {
     Serial.println("error opening datalog.txt");
   }
-  delay(5000);
+  Serial.println(mysense[0]);
+  delay(50);
 }
