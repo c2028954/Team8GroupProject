@@ -17,10 +17,17 @@ File myFile;
 // RTC instance
 RTC_DS1307 rtc;
 
+// Simple Moving Average Filter settings
+#define NUM_SAMPLES 10
+float temperatureReadings[NUM_SAMPLES]; // Array to store temperature readings
+int tempIndex = 0; // Index for the current reading
+float totalTemperature = 0; // Sum of the current window of readings
+float averageTemperature = 0; // Average of the readings in the window
+
 void setup() {
     Serial.begin(9600);
-    while (!Serial);
-    
+    while (!Serial);  // Wait for the serial port to connect - necessary for Leonardo only
+
     // Initialize BME280
     if (!bme.begin(0x76)) {  // Default I2C address is 0x76; change if necessary
         Serial.println("Could not find a valid BME280 sensor, check wiring!");
@@ -51,6 +58,11 @@ void setup() {
         Serial.println("File opened successfully");
         myFile.println("Date,Time,Temperature (C)");
         myFile.close();
+    }
+
+    // Initialize temperature readings
+    for (int i = 0; i < NUM_SAMPLES; i++) {
+        temperatureReadings[i] = 0; // Initialize the array to 0
     }
 }
 
@@ -86,13 +98,19 @@ void loggingTime() {
 }
 
 void loggingSensorData() {
-    float temperature = bme.readTemperature();
-    
-    Serial.print("Temperature: "); Serial.print(temperature); Serial.println(" *C");
+    float currentTemperature = bme.readTemperature();
+    totalTemperature -= temperatureReadings[tempIndex]; // Subtract the oldest temperature
+    temperatureReadings[tempIndex] = currentTemperature; // Update the newest temperature
+    totalTemperature += temperatureReadings[tempIndex]; // Add the newest temperature
+    tempIndex = (tempIndex + 1) % NUM_SAMPLES; // Update index to the next position
+
+    averageTemperature = totalTemperature / NUM_SAMPLES; // Calculate the average temperature
+
+    Serial.print("Average Temperature: "); Serial.print(averageTemperature); Serial.println(" *C");
     
     myFile = SD.open("DATA.txt", FILE_WRITE);
     if (myFile) {
-        myFile.println(temperature);
+        myFile.println(averageTemperature);
         myFile.close();
     }
 }
