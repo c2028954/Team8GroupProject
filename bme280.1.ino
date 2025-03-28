@@ -9,7 +9,7 @@
 Adafruit_BME280 bme;
 
 // SD card chip select pin (change if necessary)
-const int chipSelect = 4;
+const int chipSelect = 10;
 
 // Create a file to store the data
 File myFile;
@@ -47,17 +47,19 @@ void setup() {
     // Initialize SD card
     Serial.print("Initializing SD card...");
     if (!SD.begin(chipSelect)) {
-        Serial.println("Initialization failed!");
+        Serial.println("SD card initialization failed!");
         return;
     }
-    Serial.println("Initialization done.");
-    
+    Serial.println("SD card initialized successfully.");
+
     // Open file and write headers
     myFile = SD.open("DATA.txt", FILE_WRITE);
     if (myFile) {
-        Serial.println("File opened successfully");
+        Serial.println("File created successfully, storing data...");
         myFile.println("Date,Time,Temperature (C)");
         myFile.close();
+    } else {
+        Serial.println("Unsuccessful data storage! Could not create file.");
     }
 
     // Initialize temperature readings
@@ -82,6 +84,8 @@ void loggingTime() {
         myFile.print(':');
         myFile.print(now.second(), DEC);
         myFile.print(',');
+    } else {
+        Serial.println("Unsuccessful data storage! Could not open file for writing time.");
     }
     Serial.print(now.year(), DEC);
     Serial.print('/');
@@ -106,12 +110,18 @@ void loggingSensorData() {
 
     averageTemperature = totalTemperature / NUM_SAMPLES; // Calculate the average temperature
 
-    Serial.print("Average Temperature: "); Serial.print(averageTemperature); Serial.println(" *C");
+    Serial.print("Average Temperature: "); 
+    Serial.print(averageTemperature); 
+    Serial.println(" *C");
     
     myFile = SD.open("DATA.txt", FILE_WRITE);
     if (myFile) {
         myFile.println(averageTemperature);
         myFile.close();
+        // Print success message after successfully writing the temperature
+        Serial.println("Temperature recorded successfully.");
+    } else {
+        Serial.println("Unsuccessful data storage! Could not write temperature data.");
     }
 }
 
