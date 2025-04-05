@@ -1,56 +1,50 @@
-#include <SPI.h>
-#include <SD.h>
-#include <Wire.h>
-#include <LoRa.h>
-#include <Arduino_LSM6DS3.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BME280.h>
-const int csPin = 4;     // LoRa radio chip select
-const int resetPin = 2;  // LoRa radio reset
-const int irqPin = 3;   // hardware interrupt
-const int chipSelect = 10; // SD chip select pin
-unsigned status;
-float x, y, z;
-int Ppin = A1;
-float Pvalue;
-int mysense[8]; // array to display data of sensors
-byte msgCount = 0;     // Message counter
-Adafruit_BME280 bme;
+//libraries that we will be using
+#include <SPI.h>                     //used for the SD card
+#include <SD.h>                     //SD library
+#include <Wire.h>                  //used for I2C comms
+#include <LoRa.h>                 // for LoRa
+#include <Arduino_LSM6DS3.h>     //gyro and acc sensor library
+#include <Adafruit_Sensor.h>    //general adafruit sensor library dependancy for the BME280 library
+#include <Adafruit_BME280.h>   //BME280 library
+
+float gx,gy,gz,ax,ay,az;
+const int csPin = 4;         // LoRa radio chip select
+const int resetPin = 2;     // LoRa radio reset
+const int irqPin = 3;      // hardware interrupt
+const int chipSelect = 10;// SD chip select pin
+unsigned status;         // initialising a variable for the status of the BME sensor 
+int Ppin = A1;          // pin used for the pressure sensor data in
+float Pvalue;          // varaiable to store pressure sensor data value in
+float mysense[8];       // array to display data of sensors
+Adafruit_BME280 bme; // initialise a 'virtual' bme sensor to interact with via the code
 void setup() {
   Serial.begin(9600);
     while (!Serial)
     ;
- // Setup LoRa module
+ // LORA MODULE SETUP
   LoRa.setPins(csPin, resetPin, irqPin);
-
-  Serial.println("LoRa Sender Test");
-
-
-
+  Serial.println("Initializing LoRa...");
   if (!LoRa.begin(866E6)) {
-    Serial.println("Starting LoRa failed!");
-    while (1)
-      ;
+    Serial.println("LoRa initialization failed.");
+    //while (1)
+  }else{
+  Serial.println("LoRa initialization done.");
   }
-Serial.println("Initializing SD card...");
-
+  //SD CARD SETUP
+  Serial.println("Initializing SD card...");
   if (!SD.begin(chipSelect)) {
-    Serial.println("initialization failed. Things to check:");
-    Serial.println("1. is a card inserted?");
-    Serial.println("2. is your wiring correct?");
-    Serial.println("3. did you change the chipSelect pin to match your shield or module?");
-    Serial.println("Note: press reset button on the board and reopen this Serial Monitor after fixing your issue!");
-    while (true);
-  }
-
+    Serial.println(" SD CARD initialization failed.");
+    
+    //while (true);
+  }else{
   Serial.println("SD initialization done.");
+  }
+  //SENSOR SETUP
 
-  //initialise sensors
-
-  //BME280 temp sense set up
-  Serial.println("point 1 reached");
+  //BME280 SETUP
+  //Serial.println("point 1 reached");
   status = bme.begin(0x76);
-  Serial.println("point 2 reached");
+  //Serial.println("point 2 reached");
   if (!status) {
         Serial.println("Could not find a valid BME280 sensor, check wiring, address, sensor ID!");
         Serial.print("SensorID was: 0x"); Serial.println(bme.sensorID(),16);
@@ -60,42 +54,55 @@ Serial.println("Initializing SD card...");
         Serial.print("        ID of 0x61 represents a BME 680.\n");
         //while (1) delay(10);
     }
-//accelerometer setup
-  /*if (!IMU.begin()) {
+//LSM6DS3 SETUP
+  if (!IMU.begin()) {
     Serial.println("Failed to initialize IMU!");
-
-    while (1);
+    //while (1);
   }
-
   Serial.print("Accelerometer sample rate = ");
   Serial.print(IMU.accelerationSampleRate());
   Serial.println(" Hz");
-}*/
-//Temp sensor setup
 
+//MPX7002DP SETUP
 pinMode(Ppin,INPUT);
 }
 void loop() {
+  // INDIVIDUAL SENSOR CODES GO RIGHT BELOW HERE 
 
-  //individual sensor codes go here
   //pressure sensor code
   Pvalue = analogRead(Ppin);
+  if(Pvalue>100){
   mysense[0] = Pvalue;
-
+  }else{
+    mysense[0] = 0;
+  }
   //BME sensor code
+  if(status){
   mysense[1] = bme.readTemperature();
-
-
-    /*if (IMU.accelerationAvailable()) {
-    IMU.readAcceleration(x, y, z);
-
-    mysense[2] = x;
-    mysense[3] = y;
-    mysense[4] = z;
-  }*/
-//sending packet data via LoRa
+  }else{
+    mysense[1] = 0;
+  }
+  //accelerometer code
+  if (IMU.accelerationAvailable()) {
+    IMU.readAcceleration(ax, ay, az);
+    mysense[2] = ax;
+    mysense[3] = ay;
+    mysense[4] = az;   
+  }else{
+    mysense[2] = mysense[3] = mysense[4] = 0;
+  }
+  //gyroscope code
+  if (IMU.gyroscopeAvailable()) {
+    IMU.readGyroscope(gx,gy,gz);
+    mysense[5] = gx;
+    mysense[6] = gy;
+    mysense[7] = gz;    
+  }else{
+    mysense[5] = mysense[6] = mysense[7] = 0;
+  }
+  //sending packet data via LoRa
   Serial.print("Sending packet: ");
-  Serial.println(msgCount);
+  
 
   // Send packet
   LoRa.beginPacket();
@@ -105,12 +112,8 @@ void loop() {
     }
   LoRa.endPacket();
 
-  // Increment packet counter
-  msgCount++;
-
   //Storing data in SD card
   File dataFile = SD.open("datalog.txt", FILE_WRITE);
-
   // if the file is available, write to it:
   if (dataFile) {
     for (int i = 0; i < 8; i++) {
@@ -119,13 +122,15 @@ void loop() {
     }
     dataFile.println();
     dataFile.close();
-    // print to the serial port too:
-    Serial.println(msgCount);
   }
   // if the file isn't open, pop up an error:
   else {
     Serial.println("error opening datalog.txt");
   }
-  Serial.println(mysense[0]);
-  delay(50);
+  for (int i = 0; i < 8; i++) {
+        Serial.print(mysense[i]);
+        if (i < 7) Serial.print(",");
+    }
+  Serial.println();
+  delay(50); // miniumum this legally can be is 100 but who really cares about legality atm
 }
