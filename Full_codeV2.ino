@@ -6,7 +6,15 @@
 #include <Arduino_LSM6DS3.h>     //gyro and acc sensor library
 #include <Adafruit_Sensor.h>    //general adafruit sensor library dependancy for the BME280 library
 #include <Adafruit_BME280.h>   //BME280 library
-
+#define DEG_TO_RAD 0.01745329251
+float pitch = 0, roll = 0;
+unsigned long prevTime = 0;
+const float alpha = 0.98; // Complementary filter coefficient
+unsigned long currentTime;
+float dt;
+unsigned long startMillis;    //some global variables available anywhere in the program
+unsigned long currentMillis;
+const unsigned long period = 1000;
 float gx,gy,gz,ax,ay,az;
 const int csPin = 4;         // LoRa radio chip select
 const int resetPin = 2;     // LoRa radio reset
@@ -15,7 +23,7 @@ const int chipSelect = 10;// SD chip select pin
 unsigned status;         // initialising a variable for the status of the BME sensor 
 int Ppin = A1;          // pin used for the pressure sensor data in
 float Pvalue;          // varaiable to store pressure sensor data value in
-float mysense[8];       // array to display data of sensors
+float mysense[4];       // array to display data of sensors
 Adafruit_BME280 bme; // initialise a 'virtual' bme sensor to interact with via the code
 void setup() {
   Serial.begin(9600);
@@ -83,40 +91,52 @@ void loop() {
     mysense[1] = 0;
   }
   //accelerometer code
-  if (IMU.accelerationAvailable()) {
+  currentTime = millis();
+  dt = (currentTime - prevTime) / 1000.0;
+  prevTime = currentTime;
+  if (IMU.accelerationAvailable()&&IMU.gyroscopeAvailable()) {
     IMU.readAcceleration(ax, ay, az);
-    mysense[2] = ax;
-    mysense[3] = ay;
-    mysense[4] = az;   
-  }else{
-    mysense[2] = mysense[3] = mysense[4] = 0;
-  }
-  //gyroscope code
-  if (IMU.gyroscopeAvailable()) {
     IMU.readGyroscope(gx,gy,gz);
-    mysense[5] = gx;
-    mysense[6] = gy;
-    mysense[7] = gz;    
-  }else{
-    mysense[5] = mysense[6] = mysense[7] = 0;
-  }
-  //sending packet data via LoRa
-  Serial.print("Sending packet: ");
-  
+    // Convert gyro from deg/s to rad/s
+    gx *= DEG_TO_RAD;
+    gy *= DEG_TO_RAD;
+    gz *= DEG_TO_RAD;
 
-  // Send packet
-  LoRa.beginPacket();
-  for (int i = 0; i < 8; i++) {
-        LoRa.print(mysense[i]); // Convert float to string and send
-        if (i < 7) LoRa.print(","); // Separate values with commas
-    }
-  LoRa.endPacket();
+    // Integrate gyroscope data
+    float rollGyro = roll + gx * dt;
+    float pitchGyro = pitch + gy * dt;
+
+    // Calculate accelerometer angle
+    float rollAcc = atan2(ay, az);
+    float pitchAcc = atan2(-ax, sqrt(ay * ay + az * az));
+
+    // Complementary filter
+    roll = alpha * rollGyro + (1 - alpha) * rollAcc;
+    pitch = alpha * pitchGyro + (1 - alpha) * pitchAcc;
+    mysense[2] = roll;
+    mysense[3] = pitch;   
+  }else{
+    mysense[2] = mysense[3] = 0;
+  }
+  currentMillis = millis();  //get the current "time" (actually the number of milliseconds since the program started)
+  if (currentMillis - startMillis >= period){
+    //sending packet data via LoRa
+    Serial.print("Sending packet: ");
+    // Send packet
+    LoRa.beginPacket();
+    for (int i = 0; i < 4; i++) {
+          LoRa.print(mysense[i]); // Convert float to string and send
+          if (i < 7) LoRa.print(","); // Separate values with commas
+      }
+    LoRa.endPacket();
+    startMillis = currentMillis;
+  }
 
   //Storing data in SD card
   File dataFile = SD.open("datalog.txt", FILE_WRITE);
   // if the file is available, write to it:
   if (dataFile) {
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 4; i++) {
         dataFile.print(mysense[i]); // Convert float to string and send
         if (i < 7) dataFile.print(","); // Separate values with commas
     }
@@ -127,10 +147,9 @@ void loop() {
   else {
     Serial.println("error opening datalog.txt");
   }
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 4; i++) {
         Serial.print(mysense[i]);
         if (i < 7) Serial.print(",");
     }
   Serial.println();
-  delay(50); // miniumum this legally can be is 100 but who really cares about legality atm
 }
