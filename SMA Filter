@@ -1,0 +1,32 @@
+// Simple Moving Average Filter settings
+#define NUM_SAMPLES 10
+float temperatureReadings[NUM_SAMPLES]; // Array to store temperature readings
+int tempIndex = 0; // Index for the current reading
+float totalTemperature = 0; // Sum of the current window of readings
+float averageTemperature = 0; // Average of the readings in the window
+
+void loggingSensorData() {
+    float currentTemperature = bme.readTemperature();
+    
+    totalTemperature -= temperatureReadings[tempIndex]; // Subtract the oldest temperature
+    temperatureReadings[tempIndex] = currentTemperature; // Update the newest temperature
+    totalTemperature += temperatureReadings[tempIndex]; // Add the newest temperature
+    
+    tempIndex = (tempIndex + 1) % NUM_SAMPLES; // Update index to the next position
+
+    averageTemperature = totalTemperature / NUM_SAMPLES; // Calculate the average temperature
+
+    Serial.print("Average Temperature: "); 
+    Serial.print(averageTemperature); 
+    Serial.println(" *C");
+    
+    myFile = SD.open("DATA.txt", FILE_WRITE);
+    if (myFile) {
+        myFile.println(averageTemperature);
+        myFile.close();
+        // Print success message after successfully writing the temperature
+        Serial.println("Temperature recorded successfully.");
+    } else {
+        Serial.println("Unsuccessful data storage! Could not write temperature data.");
+    }
+}
